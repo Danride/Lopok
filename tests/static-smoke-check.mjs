@@ -6,16 +6,23 @@ const css = readFileSync(new URL('../styles/main.css', import.meta.url), 'utf8')
 const js = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const audio = readFileSync(new URL('../src/audio/audio.js', import.meta.url), 'utf8');
 const input = readFileSync(new URL('../src/input/input.js', import.meta.url), 'utf8');
+const cosmetics = readFileSync(new URL('../src/systems/cosmetics.js', import.meta.url), 'utf8');
 const balance = readFileSync(new URL('../src/systems/balance.js', import.meta.url), 'utf8');
 
 assert.match(html, /styles\/main\.css/);
 assert.match(html, /src\/audio\/audio\.js/);
 assert.match(html, /src\/systems\/balance\.js/);
 assert.match(html, /src\/input\/input\.js/);
+assert.match(html, /src\/systems\/cosmetics\.js/);
 assert.match(html, /src\/main\.js/);
+const menuMarkup = html.match(/<div id=\"menu\">[\s\S]*?<\/div>/)?.[0] ?? '';
+assert.doesNotMatch(menuMarkup, /\bonclick=/);
+assert.doesNotMatch(html, /\balert\s*\(/);
 assert.ok(
   html.indexOf('src/audio/audio.js') < html.indexOf('src/systems/balance.js') &&
   html.indexOf('src/systems/balance.js') < html.indexOf('src/input/input.js') &&
+  html.indexOf('src/systems/balance.js') < html.indexOf('src/systems/cosmetics.js') &&
+  html.indexOf('src/systems/cosmetics.js') < html.indexOf('src/input/input.js') &&
   html.indexOf('src/input/input.js') < html.indexOf('src/main.js'),
   'Audio and input modules must load before the game script'
 );
@@ -33,12 +40,13 @@ assert.match(balance, /hook:/);
 assert.match(js, /function rebuildWheatIndex\(\)/);
 assert.match(js, /function forNearbyWheat\(/);
 assert.doesNotMatch(js, /function harvestAt\(r, hx, hy\) \{\s*for \(const w of wheat\)/);
-assert.match(audio, /window\.LopokAudio = sound/);
+assert.match(audio, /window\.LopokAudio = audio/);
 assert.match(input, /setPointerCapture/);
 assert.match(js, /if \(!player \|\| !player\.alive/);
 assert.match(css, /@media \(max-width: 640px\)/);
 assert.match(css, /safe-area-inset-bottom/);
 assert.match(input, /window\.LopokInput = input/);
+assert.match(cosmetics, /window\.LopokCosmetics/);
 
 const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(m => m[1]);
 assert.equal(ids.length, new Set(ids).size, 'HTML IDs must be unique');
