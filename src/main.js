@@ -1391,8 +1391,14 @@ function renderScytheShop() {
     const weapon = SCYTHES[id];
     const selected = selectedScytheId === id;
     const speed = (1 / weapon.hitInterval).toFixed(1);
+    const glyph = {
+      sickle: '<path d="M17 55 L38 31"/><path d="M37 31 Q57 25 52 43 Q48 53 34 47"/>',
+      field: '<path d="M10 57 L47 14"/><path d="M45 16 Q62 7 57 28 Q52 39 37 34"/>',
+      long: '<path d="M8 59 L51 9"/><path d="M49 11 Q66 3 60 23 Q56 31 43 27"/>',
+      hook: '<path d="M10 57 L45 17"/><path d="M44 17 Q64 11 57 29 Q52 37 45 30 L39 25"/>'
+    }[id];
     return `<button class="scythe-choice${selected ? ' selected' : ''}" type="button" data-scythe-id="${id}" aria-pressed="${selected}">
-      <span class="scythe-emblem" style="--weapon-accent:${weapon.accent}"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M11 54 L46 16"/><path d="M44 16 Q57 8 54 25 Q52 36 39 34"/></svg></span>
+      <span class="scythe-emblem" style="--weapon-accent:${weapon.accent}"><svg viewBox="0 0 64 64" aria-hidden="true">${glyph}</svg></span>
       <span class="scythe-choice-name">${weapon.name}</span><span class="scythe-choice-role">${weapon.role}</span>
       <span class="scythe-stats"><i>Размах ${Math.round(weapon.range * 100)}%</i><i>Темп ${speed}/с</i><i>Урон ${Math.round(weapon.damage * 100)}%</i></span>
       <span class="scythe-equip">${selected ? 'Выбрана' : 'Выбрать'}</span>
