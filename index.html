@@ -9,16 +9,49 @@
 </head>
 <body>
 
+<canvas id="game" aria-label="Поле игры"></canvas>
+
 <div id="menu">
-  <div class="menu-sub">ПОЛЕ №100 · СЕЗОН ЖАТВЫ</div>
-  <div class="menu-title">ЖНЕЦЫ</div>
-  <button class="menu-btn" onclick="startGame()">Начать</button>
-  <button class="menu-btn" onclick="alert('Скины: зелёный, красный, синий, жёлтый — все бесплатные!')">Выбор скина</button>
-  <button class="menu-btn" onclick="cycleScythe()">Коса: <span id="scythe-choice">Полевая коса</span> · сменить</button>
-  <div id="scythe-description" class="menu-hint">сбалансированная · дальность 100%</div>
+  <div class="menu-frame">
+    <div class="menu-sub">ПОЛЕ №100 · СЕЗОН ЖАТВЫ</div>
+    <div class="menu-title">ЖНЕЦЫ</div>
+    <div class="menu-tagline">Собирай урожай. Выбирай свою косу. Останься последним.</div>
+    <div class="menu-preview-row">
+      <span class="menu-player-preview" id="menu-player-preview" aria-hidden="true"></span>
+      <span><b id="menu-skin-name">Золотой колос</b><small id="menu-scythe-name">Полевая коса</small></span>
+      <span class="menu-wallet">🌾 <b id="menu-wallet">0</b></span>
+    </div>
+    <button class="menu-btn primary" id="start-btn" type="button">Начать жатву</button>
+    <div class="menu-button-row">
+      <button class="menu-btn secondary" id="skins-btn" type="button">Скины</button>
+      <button class="menu-btn secondary" id="scythes-btn" type="button">Косы</button>
+    </div>
+    <button class="menu-sound-btn" id="menu-sound-btn" type="button">Звук: включён</button>
+    <div class="menu-footnote">На компьютере — WASD / стрелки · На телефоне — веди пальцем</div>
+  </div>
 </div>
 
-<canvas id="game"></canvas>
+<div class="modal-backdrop" id="skin-modal" hidden>
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="skin-modal-title">
+    <header class="modal-header">
+      <div><div class="modal-kicker">МАСТЕРСКАЯ</div><h2 id="skin-modal-title">Коллекция жнеца</h2></div>
+      <div class="modal-wallet">🌾 <b id="skin-wallet">0</b></div>
+    </header>
+    <p class="modal-copy">Выбирай окраску и узор. Четыре первых образа открыты сразу, остальные покупаются за игровые монеты.</p>
+    <div class="skin-grid" id="skin-grid"></div>
+    <div class="modal-footer"><span id="skin-status" role="status">Выбери свой образ.</span><button class="menu-btn secondary modal-close" id="close-skins" type="button">Готово</button></div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="scythe-modal" hidden>
+  <section class="modal-card scythe-card" role="dialog" aria-modal="true" aria-labelledby="scythe-modal-title">
+    <header class="modal-header"><div><div class="modal-kicker">ОРУЖЕЙНАЯ</div><h2 id="scythe-modal-title">Выбор косы</h2></div><button class="icon-close" id="close-scythes" type="button" aria-label="Закрыть">×</button></header>
+    <p class="modal-copy">У каждой модели свой темп, размах и характер. Выбор сохраняется автоматически.</p>
+    <div class="scythe-grid" id="scythe-grid"></div>
+  </section>
+</div>
+<div class="game-toast" id="game-toast" role="status" aria-live="polite"></div>
+
 
 <div id="hud" style="display:none;">
   <div class="hud-top">
@@ -110,14 +143,15 @@
       <span class="gameover-coins-label">МОНЕТ</span>
     </div>
     <div class="gameover-btns">
-      <button class="menu-btn" onclick="restartGame()">Ещё раз</button>
-      <button class="menu-btn" onclick="exitToMenu()">В меню</button>
+      <button class="menu-btn" id="restart-btn" type="button">Ещё раз</button>
+      <button class="menu-btn" id="return-menu-btn" type="button">В меню</button>
     </div>
   </div>
 </div>
 
 <script src="src/audio/audio.js" defer></script>
 <script src="src/systems/balance.js" defer></script>
+<script src="src/systems/cosmetics.js" defer></script>
 <script src="src/input/input.js" defer></script>
 <script src="src/main.js" defer></script>
 </body>
