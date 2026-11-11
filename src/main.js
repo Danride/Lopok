@@ -1,7 +1,10 @@
 // Audio is initialized separately in src/audio/audio.js.
 const audio = window.LopokAudio;
 const { SCYTHES, SCYTHE_ORDER, TUNING: BALANCE } = window.LopokBalance;
-let selectedScytheId = 'field';
+const cosmetics = window.LopokCosmetics;
+let selectedScytheId = cosmetics.getState().selectedScythe;
+let selectedSkinId = cosmetics.getState().selectedSkin;
+let runRewardSaved = false;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CANVAS
@@ -81,12 +84,13 @@ const MAX_PARTICLES = 400;
 function xpNeed(level) { return 40 + (level - 1) * 45; }
 
 function createReaper(name, isPlayer, skin, requestedScytheId = null) {
+  const skinData = skin && typeof skin === 'object' ? skin : { color: skin, accent: '#f5e6b0', pattern: 'plain' };
   const gx = Math.floor(Math.random() * GRID), gy = Math.floor(Math.random() * GRID);
   const x = gx * CELL + rand(80, CELL - 80), y = gy * CELL + rand(80, CELL - 80);
   const scytheId = requestedScytheId || (isPlayer ? selectedScytheId : SCYTHE_ORDER[reapers.length % SCYTHE_ORDER.length]);
   const scythe = SCYTHES[scytheId] || SCYTHES.field;
   return {
-    id: reapers.length, name, isPlayer, skin, scytheId,
+    id: reapers.length, name, isPlayer, skin: skinData.color || '#e3b93d', skinAccent: skinData.accent || '#f5e6b0', skinPattern: skinData.pattern || 'plain', skinId: isPlayer ? selectedSkinId : null, scytheId,
     x, y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2),
     level: 1, xp: 0, score: 0,
     radius: 16, pickLen: 56,
@@ -206,7 +210,7 @@ function spawnAll() {
   reapers = [];
   const names = ['Серп','Колос','Жнец','Сноп','Зерно','Рожь','Ячмень','Мельник','Хлеб','Солома','Косарь','Борода','Плуг','Овин','Гумно','Ток','Степной','Ветер','Гром','Молот','Крыло','Клык','Шип','Дым','Пепел','Корень','Побег','Ливень','Зной','Иней','Урожай','Полдень'];
   const skins = ['#4f9e4f','#c9503f','#4a7fbf','#e3b93d','#d9812e','#33302b','#e9e5d8','#8a5cbf','#3fb8a8'];
-  player = createReaper('ТЫ', true, '#e3b93d');
+  player = createReaper('ТЫ', true, cosmetics.getSkin(selectedSkinId));
   applyLevel(player); player.hp = player.maxHp;
   reapers.push(player);
   for (let i = 0; i < 99; i++) {
@@ -253,17 +257,28 @@ function tryBlock() {
   }
 }
 
-function toggleMute() { audio.muted = !audio.muted; document.getElementById('mute-btn').textContent = audio.muted ? '🔇' : '🔊'; }
+function toggleMute() {
+  audio.muted = !audio.muted;
+  cosmetics.setMuted(audio.muted);
+  const hudButton = document.getElementById('mute-btn');
+  if (hudButton) hudButton.textContent = audio.muted ? '🔇' : '🔊';
+  const menuButton = document.getElementById('menu-sound-btn');
+  if (menuButton) menuButton.textContent = audio.muted ? 'Звук: выключен' : 'Звук: включён';
+  if (!audio.muted) audio.click();
+}
 function togglePause() { paused = !paused; }
 
+function refreshScytheLabel() {
+  const weapon = SCYTHES[selectedScytheId] || SCYTHES.field;
+  const label = document.getElementById('menu-scythe-name');
+  if (label) label.textContent = weapon.name;
+}
 function cycleScythe() {
   const current = SCYTHE_ORDER.indexOf(selectedScytheId);
   selectedScytheId = SCYTHE_ORDER[(current + 1) % SCYTHE_ORDER.length];
-  const weapon = SCYTHES[selectedScytheId];
-  const label = document.getElementById('scythe-choice');
-  const info = document.getElementById('scythe-description');
-  if (label) label.textContent = weapon.name;
-  if (info) info.textContent = weapon.role + ' · дальность ' + Math.round(weapon.range * 100) + '% · темп ' + Math.round((1 / weapon.hitInterval) * 100) / 100 + '/с';
+  cosmetics.setScythe(selectedScytheId);
+  refreshScytheLabel();
+  renderScytheShop();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1017,6 +1032,33 @@ function drawReaper(r) {
   ctx.beginPath();
   ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
   ctx.fill();
+  // Small clipped patterns make equipped skins readable at gameplay scale.
+  if (r.skinPattern && r.skinPattern !== 'plain') {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.radius - 1, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(r.x, r.y);
+    ctx.strokeStyle = r.skinAccent || '#f5e6b0';
+    ctx.fillStyle = r.skinAccent || '#f5e6b0';
+    ctx.globalAlpha = 0.72;
+    if (r.skinPattern === 'stripes') {
+      ctx.rotate(-0.62); ctx.lineWidth = Math.max(2, r.radius * 0.12);
+      for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(-r.radius * 1.4, k * r.radius * 0.55); ctx.lineTo(r.radius * 1.4, k * r.radius * 0.55); ctx.stroke(); }
+    } else if (r.skinPattern === 'spots') {
+      for (let k = 0; k < 7; k++) { const a = k * 2.399; const rr = r.radius * (0.2 + (k % 3) * 0.17); ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, Math.max(1.5, r.radius * 0.09), 0, Math.PI * 2); ctx.fill(); }
+    } else if (r.skinPattern === 'leaf') {
+      ctx.lineWidth = 1.5;
+      for (let k = 0; k < 3; k++) { ctx.save(); ctx.rotate(k * Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(0, -r.radius * 0.43, r.radius * 0.13, r.radius * 0.31, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    } else if (r.skinPattern === 'rings') {
+      ctx.lineWidth = Math.max(1.2, r.radius * 0.07);
+      ctx.beginPath(); ctx.arc(0, 0, r.radius * 0.55, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, r.radius * 0.27, 0, Math.PI * 2); ctx.stroke();
+    } else if (r.skinPattern === 'sun') {
+      ctx.lineWidth = Math.max(1.2, r.radius * 0.07);
+      ctx.beginPath(); ctx.arc(0, 0, r.radius * 0.28, 0, Math.PI * 2); ctx.stroke();
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r.radius * 0.4, Math.sin(a) * r.radius * 0.4); ctx.lineTo(Math.cos(a) * r.radius * 0.78, Math.sin(a) * r.radius * 0.78); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
   ctx.strokeStyle = 'rgba(23,18,8,0.55)';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -1166,6 +1208,7 @@ function updateHUD() {
 // GAME LOOP
 // ═══════════════════════════════════════════════════════════════════════════════
 let raf = 0;
+let menuRaf = 0, menuLastT = 0, menuWheat = [];
 function loop(t) {
   if (!running) return;
   const dt = clamp((t - lastT) / 1000, 0, 0.05);
@@ -1179,11 +1222,13 @@ function loop(t) {
 function startGame() {
   audio.ensure();
   audio.click();
-  cancelAnimationFrame(raf);          // FIX: не давать двум циклам работать одновременно
+  cancelAnimationFrame(raf);
+  cancelAnimationFrame(menuRaf);
+  document.getElementById('game').style.pointerEvents = 'auto';
   document.getElementById('menu').classList.add('hidden');
   document.getElementById('hud').style.display = 'block';
   document.getElementById('gameover').classList.remove('show');
-  running = true; paused = false; gameOver = false; time = 0; lastT = performance.now();
+  running = true; paused = false; gameOver = false; runRewardSaved = false; time = 0; lastT = performance.now();
   particles = []; texts = []; bonuses = []; bonusSpawnT = 0; flash = 0; shakeT = 0;
   lastRegion = -2; regionFlashT = 0;
   buildWorld(); spawnAll();
@@ -1194,9 +1239,11 @@ function startGame() {
 function restartGame() {
   audio.ensure();
   audio.click();
-  cancelAnimationFrame(raf);          // FIX
+  cancelAnimationFrame(raf);
+  cancelAnimationFrame(menuRaf);
+  document.getElementById('game').style.pointerEvents = 'auto';
   document.getElementById('gameover').classList.remove('show');
-  running = true; paused = false; gameOver = false; time = 0; lastT = performance.now();
+  running = true; paused = false; gameOver = false; runRewardSaved = false; time = 0; lastT = performance.now();
   particles = []; texts = []; bonuses = []; bonusSpawnT = 0; flash = 0; shakeT = 0;
   lastRegion = -2; regionFlashT = 0;
   buildWorld(); spawnAll();
@@ -1208,20 +1255,232 @@ function exitToMenu() {
   audio.click();
   running = false;
   cancelAnimationFrame(raf);
+  document.getElementById('game').style.pointerEvents = 'none';
   document.getElementById('menu').classList.remove('hidden');
   document.getElementById('hud').style.display = 'none';
   document.getElementById('gameover').classList.remove('show');
+  refreshMenuCosmetics();
+  startMenuLoop();
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN MENU SCENE — animated wheat uses the same stalk renderer as the game.
+// ═══════════════════════════════════════════════════════════════════════════════
+function seedMenuWheat() {
+  menuWheat = [];
+  const count = clamp(Math.floor(W * H / 1050), 420, 1500);
+  for (let i = 0; i < count; i++) {
+    const depth = Math.random();
+    menuWheat.push({
+      x: rand(-18, W + 18), y: rand(-26, H + 26),
+      h: rand(17, 37) * (0.72 + depth * 0.5),
+      stage: rand(0.72, 1), phase: rand(0, Math.PI * 2),
+      alpha: 0.28 + depth * 0.63, depth
+    });
+  }
+  menuWheat.sort((a, b) => a.y - b.y);
+}
+
+function drawMenuScene() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#d8b65b'); sky.addColorStop(0.56, '#b9933d'); sky.addColorStop(1, '#84652b');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // Long, subtle furrows make the menu read as the same golden field as gameplay.
+  ctx.save();
+  ctx.strokeStyle = 'rgba(75,54,15,0.16)'; ctx.lineWidth = 2;
+  for (let i = -3; i < 10; i++) {
+    const y = i * 145 + ((time * 5) % 145);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.quadraticCurveTo(W * 0.5, y - 38, W, y + 12); ctx.stroke();
+  }
+  const rg = REGIONS[0];
+  for (const w of menuWheat) {
+    const sway = Math.sin(time * 1.65 + w.phase) * (1.8 + w.depth * 3.8);
+    ctx.globalAlpha = w.alpha;
+    drawStalk(w.x, w.y, w.h, sway, rg, w.stage);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  const vignette = ctx.createRadialGradient(W * 0.5, H * 0.43, Math.min(W, H) * 0.12, W * 0.5, H * 0.48, Math.max(W, H) * 0.72);
+  vignette.addColorStop(0, 'rgba(33,25,8,0.04)'); vignette.addColorStop(1, 'rgba(24,18,7,0.48)');
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H);
+}
+
+function menuLoop(t) {
+  if (running || document.getElementById('menu').classList.contains('hidden')) return;
+  const dt = menuLastT ? clamp((t - menuLastT) / 1000, 0, 0.05) : 0;
+  menuLastT = t; time += dt;
+  drawMenuScene();
+  menuRaf = requestAnimationFrame(menuLoop);
+}
+function startMenuLoop() {
+  cancelAnimationFrame(menuRaf);
+  if (!menuWheat.length) seedMenuWheat();
+  menuLastT = 0;
+  menuRaf = requestAnimationFrame(menuLoop);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MENU PANELS — all feedback stays inside the game.
+// ═══════════════════════════════════════════════════════════════════════════════
+function showToast(message) {
+  const toast = document.getElementById('game-toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove('visible'), 1900);
+}
+
+function refreshMenuCosmetics() {
+  const state = cosmetics.getState();
+  const skin = cosmetics.getSkin(state.selectedSkin);
+  selectedSkinId = skin.id;
+  selectedScytheId = state.selectedScythe;
+  const wallet = document.getElementById('menu-wallet');
+  const skinName = document.getElementById('menu-skin-name');
+  const preview = document.getElementById('menu-player-preview');
+  if (wallet) wallet.textContent = state.coins;
+  if (skinName) skinName.textContent = skin.name;
+  if (preview) { preview.style.setProperty('--skin-color', skin.color); preview.style.setProperty('--skin-accent', skin.accent); preview.dataset.pattern = skin.pattern; }
+  const soundButton = document.getElementById('menu-sound-btn');
+  if (soundButton) soundButton.textContent = audio.muted ? 'Звук: выключен' : 'Звук: включён';
+  const hudMute = document.getElementById('mute-btn');
+  if (hudMute) hudMute.textContent = audio.muted ? '🔇' : '🔊';
+  refreshScytheLabel();
+}
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.hidden = false;
+  modal.classList.add('open');
+  const first = modal.querySelector('button');
+  if (first) first.focus({ preventScroll: true });
+}
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.hidden = true;
+}
+function closeAllModals() { closeModal('skin-modal'); closeModal('scythe-modal'); }
+
+function renderSkinShop() {
+  const grid = document.getElementById('skin-grid');
+  if (!grid) return;
+  const state = cosmetics.getState();
+  document.getElementById('skin-wallet').textContent = state.coins;
+  grid.innerHTML = cosmetics.skins.map(skin => {
+    const unlocked = state.unlockedSkins.includes(skin.id);
+    const equipped = state.selectedSkin === skin.id;
+    const action = equipped ? 'Выбрано' : unlocked ? 'Надеть' : `Открыть · ${skin.price} 🌾`;
+    return `<button class="skin-card${equipped ? ' equipped' : ''}" type="button" data-skin-id="${skin.id}" aria-pressed="${equipped}">
+      <span class="skin-orb" style="--skin-color:${skin.color};--skin-accent:${skin.accent}" data-pattern="${skin.pattern}"><i></i></span>
+      <span class="skin-card-name">${skin.name}</span><span class="skin-card-desc">${skin.desc}</span>
+      <span class="skin-card-action">${action}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderScytheShop() {
+  const grid = document.getElementById('scythe-grid');
+  if (!grid) return;
+  grid.innerHTML = SCYTHE_ORDER.map(id => {
+    const weapon = SCYTHES[id];
+    const selected = selectedScytheId === id;
+    const speed = (1 / weapon.hitInterval).toFixed(1);
+    return `<button class="scythe-choice${selected ? ' selected' : ''}" type="button" data-scythe-id="${id}" aria-pressed="${selected}">
+      <span class="scythe-emblem" style="--weapon-accent:${weapon.accent}"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M11 54 L46 16"/><path d="M44 16 Q57 8 54 25 Q52 36 39 34"/></svg></span>
+      <span class="scythe-choice-name">${weapon.name}</span><span class="scythe-choice-role">${weapon.role}</span>
+      <span class="scythe-stats"><i>Размах ${Math.round(weapon.range * 100)}%</i><i>Темп ${speed}/с</i><i>Урон ${Math.round(weapon.damage * 100)}%</i></span>
+      <span class="scythe-equip">${selected ? 'Выбрана' : 'Выбрать'}</span>
+    </button>`;
+  }).join('');
+}
+
+function bindMenuAction(element, action) {
+  if (!element) return;
+  let lastPointerAt = -1000;
+  element.addEventListener('pointerup', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault(); lastPointerAt = performance.now(); action();
+  });
+  element.addEventListener('click', event => {
+    if (performance.now() - lastPointerAt < 450) return;
+    event.preventDefault(); action();
+  });
+}
+
+function setupMenuUI() {
+  audio.muted = cosmetics.getState().muted;
+  const state = cosmetics.getState();
+  selectedSkinId = state.selectedSkin; selectedScytheId = state.selectedScythe;
+  bindMenuAction(document.getElementById('start-btn'), startGame);
+  bindMenuAction(document.getElementById('skins-btn'), () => { renderSkinShop(); openModal('skin-modal'); });
+  bindMenuAction(document.getElementById('scythes-btn'), () => { renderScytheShop(); openModal('scythe-modal'); });
+  bindMenuAction(document.getElementById('menu-sound-btn'), toggleMute);
+  bindMenuAction(document.getElementById('close-skins'), () => closeModal('skin-modal'));
+  bindMenuAction(document.getElementById('close-scythes'), () => closeModal('scythe-modal'));
+  bindMenuAction(document.getElementById('restart-btn'), restartGame);
+  bindMenuAction(document.getElementById('return-menu-btn'), exitToMenu);
+
+  document.getElementById('skin-grid').addEventListener('click', event => {
+    const button = event.target.closest('[data-skin-id]');
+    if (!button) return;
+    const result = cosmetics.unlockOrEquipSkin(button.dataset.skinId);
+    if (!result.ok) {
+      showToast(`Не хватает ${result.missing} монет. Собирай колосья и бонусы в игре.`);
+      return;
+    }
+    selectedSkinId = result.skin.id;
+    renderSkinShop(); refreshMenuCosmetics();
+    document.getElementById('skin-status').textContent = result.purchased ? `Открыт образ «${result.skin.name}»!` : `Надет образ «${result.skin.name}».`;
+    audio.pickup();
+  });
+  document.getElementById('scythe-grid').addEventListener('click', event => {
+    const button = event.target.closest('[data-scythe-id]');
+    if (!button) return;
+    selectedScytheId = button.dataset.scytheId;
+    cosmetics.setScythe(selectedScytheId);
+    renderScytheShop(); refreshMenuCosmetics(); audio.click();
+    showToast(`Выбрана: ${SCYTHES[selectedScytheId].name}`);
+  });
+  for (const id of ['skin-modal', 'scythe-modal']) {
+    const modal = document.getElementById(id);
+    modal.addEventListener('pointerdown', event => { if (event.target === modal) closeModal(id); });
+  }
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeAllModals();
+  });
+  window.addEventListener('resize', () => { if (!running) seedMenuWheat(); });
+  refreshMenuCosmetics();
 }
 
 function showGameOver() {
+  if (!runRewardSaved) {
+    const reward = player.coinsRun + Math.floor(player.score / 500);
+    cosmetics.addCoins(reward);
+    runRewardSaved = true;
+    refreshMenuCosmetics();
+  }
   const sc = player.score >= 1000 ? (player.score / 1000).toFixed(1).replace('.', ',') + 'к' : player.score;
+  const best = cosmetics.saveBest(player.score);
   document.getElementById('go-score').textContent = sc;
   document.getElementById('go-level').textContent = player.level;
   document.getElementById('go-harvests').textContent = player.harvests;
   document.getElementById('go-kills').textContent = player.kills;
   const mins = Math.floor(time / 60), secs = Math.floor(time % 60);
   document.getElementById('go-time').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-  document.getElementById('go-best').textContent = sc;
-  document.getElementById('go-coins').textContent = '+' + player.coinsRun;
+  document.getElementById('go-best').textContent = best >= 1000 ? (best / 1000).toFixed(1).replace('.', ',') + 'к' : best;
+  document.getElementById('go-coins').textContent = '+' + (player.coinsRun + Math.floor(player.score / 500));
   document.getElementById('gameover').classList.add('show');
 }
+
+
+// Boot the title screen after all systems and handlers are declared.
+setupMenuUI();
+seedMenuWheat();
+document.getElementById('game').style.pointerEvents = 'none';
+startMenuLoop();
