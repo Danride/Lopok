@@ -1,158 +1,44 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ЖНЕЦЫ — пшеничная .io резня</title>
-<link rel="stylesheet" href="styles/main.css">
-
-</head>
-<body>
-
-<canvas id="game" aria-label="Поле игры"></canvas>
-
-<div id="menu">
-  <div class="menu-frame">
-    <div class="menu-sub">ПОЛЕ №100 · СЕЗОН ЖАТВЫ</div>
-    <div class="menu-title">ЖНЕЦЫ</div>
-    <div class="menu-tagline">Собирай урожай. Выбирай свою косу. Останься последним.</div>
-    <div class="menu-preview-row">
-      <span class="menu-player-preview" id="menu-player-preview" aria-hidden="true"></span>
-      <span><b id="menu-skin-name">Золотой колос</b><small id="menu-scythe-name">Полевая коса</small></span>
-      <span class="menu-wallet">🌾 <b id="menu-wallet">0</b></span>
-    </div>
-    <button class="menu-btn primary" id="start-btn" type="button">Начать жатву</button>
-    <div class="menu-button-row">
-      <button class="menu-btn secondary" id="skins-btn" type="button">Скины</button>
-      <button class="menu-btn secondary" id="scythes-btn" type="button">Косы</button>
-    </div>
-    <button class="menu-sound-btn" id="menu-sound-btn" type="button">Звук: включён</button>
-    <div class="menu-footnote">На компьютере — WASD / стрелки · На телефоне — веди пальцем</div>
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111a12"><title>Зелёный удел — Лесное поселение v3.1</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"}}</script></head><body>
+<div id="game"></div><div id="overlay"><div id="flyLayer"></div>
+  <div id="hud"><div class="brand"><b>ЗЕЛЁНЫЙ УДЕЛ <span>/ V3.1</span></b><small>ЛЕСНОЕ ПОСЕЛЕНИЕ · СТРАТЕГИЯ 2.5D</small></div>
+    <div class="rightInfo"><div class="stats">
+       <div class="stat"><small>🪵 Древесина</small><strong id="wood">125</strong><em id="woodDetail">Только доставка</em></div>
+       <div class="stat"><small>🪙 Монеты</small><strong id="gold">0</strong><em>Дома дают доход</em></div>
+       <div class="stat"><small>🏠 Дома</small><strong id="houses">0</strong><em><span id="population">0</span> жителей</em></div>
+    </div><div class="extraBtns"><button id="save">Сохранить</button><button id="reset">Новая игра</button><button id="helpBtn">?</button></div></div>
   </div>
-</div>
-
-<div class="modal-backdrop" id="skin-modal" hidden>
-  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="skin-modal-title">
-    <header class="modal-header">
-      <div><div class="modal-kicker">МАСТЕРСКАЯ</div><h2 id="skin-modal-title">Коллекция жнеца</h2></div>
-      <div class="modal-wallet">🌾 <b id="skin-wallet">0</b></div>
-    </header>
-    <p class="modal-copy">Выбирай окраску и узор. Четыре первых образа открыты сразу, остальные покупаются за игровые монеты.</p>
-    <div class="skin-grid" id="skin-grid"></div>
-    <div class="modal-footer"><span id="skin-status" role="status">Выбери свой образ.</span><button class="menu-btn secondary modal-close" id="close-skins" type="button">Готово</button></div>
-  </section>
-</div>
-
-<div class="modal-backdrop" id="scythe-modal" hidden>
-  <section class="modal-card scythe-card" role="dialog" aria-modal="true" aria-labelledby="scythe-modal-title">
-    <header class="modal-header"><div><div class="modal-kicker">ОРУЖЕЙНАЯ</div><h2 id="scythe-modal-title">Выбор косы</h2></div><button class="icon-close" id="close-scythes" type="button" aria-label="Закрыть">×</button></header>
-    <p class="modal-copy">У каждой модели свой темп, размах и характер. Выбор сохраняется автоматически.</p>
-    <div class="scythe-grid" id="scythe-grid"></div>
-  </section>
-</div>
-<div class="game-toast" id="game-toast" role="status" aria-live="polite"></div>
-
-
-<div id="hud" style="display:none;">
-  <div class="hud-top">
-    <div class="hud-panel hud-left">
-      <div style="display:flex;flex-direction:column;align-items:center;line-height:1;">
-        <span style="font-size:10px;letter-spacing:0.2em;color:#a58a2c;">УР</span>
-        <span id="hud-level" style="font-size:24px;font-weight:900;color:#f0d878;">1</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <div style="width:112px;height:6px;background:rgba(0,0,0,0.5);border-radius:2px;overflow:hidden;">
-          <div id="hud-xp" style="width:0%;height:100%;background:#e8c547;border-radius:2px;transition:width 0.2s;"></div>
-        </div>
-        <div style="width:112px;height:8px;background:rgba(0,0,0,0.5);border-radius:2px;overflow:hidden;">
-          <div id="hud-hp" style="width:100%;height:100%;background:#7dc95e;border-radius:2px;transition:width 0.2s;"></div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1;">
-        <span id="hud-score" style="font-size:14px;font-weight:900;color:#f5e6b0;">0</span>
-        <span style="font-size:10px;color:#a58a2c;">очков</span>
-      </div>
-    </div>
-    <div class="hud-right">
-      <div style="display:flex;gap:6px;">
-        <button class="hud-btn" onclick="toggleMute()" id="mute-btn">🔊</button>
-        <button class="hud-btn" onclick="togglePause()">⏸</button>
-      </div>
-      <div class="hud-panel hud-coins">
-        <span>🌾</span>
-        <span id="hud-coins">0</span>
-      </div>
-      <div class="hud-panel hud-stats">
-        <span>⚔️ <span id="hud-kills">0</span></span>
-        <span style="color:#a58a2c;">·</span>
-        <span><span id="hud-alive">100</span> жив.</span>
-      </div>
-      <div class="hud-panel hud-board">
-        <div class="hud-board-title">ТОП ЖНЕЦОВ</div>
-        <div id="hud-board-rows"></div>
-      </div>
-    </div>
+  <div class="side"><h3>🌲 ЛЕСНОЕ ХОЗЯЙСТВО</h3><p>Жители идут к деревьям, рубят их и несут брёвна на лесопилку. Древесина начисляется <b>только при доставке.</b></p>
+   <div class="row"><span>Лесопилки</span><span class="value" id="mills">0</span></div>
+   <div class="row"><span>Доставлено брёвен</span><span class="value" id="deliveries">0</span></div>
+   <div class="activity" id="activity">Ожидание жителей…</div>
   </div>
-  <div class="hud-region" id="hud-region" style="display:none;">
-    <div class="hud-region-name" id="hud-region-name"></div>
-    <div class="hud-region-sub">— ОБЛАСТЬ —</div>
+  <div class="camControls" aria-label="Управление камерой">
+    <button id="camMinus" title="Отдалить">−</button><button id="camUp" title="Наклонить выше">↑</button><button id="camPlus" title="Приблизить">+</button>
+    <button id="camLeft" title="Повернуть влево">↶</button><button id="camDown" title="Наклонить ниже">↓</button><button id="camRight" title="Повернуть вправо">↷</button>
+    <button id="camReset" class="reset" title="Вернуть исходный ракурс">⌂ Сброс камеры</button>
   </div>
-  <div class="hud-bottom">
-    <div style="display:flex;flex-direction:column;gap:6px;padding-left:118px;">
-      <div class="hud-buffs" id="hud-buffs"></div>
-      <div style="max-width:256px;font-size:11px;line-height:1.4;color:rgba(245,230,176,0.75);">
-        Веди пальцем — движение. Двойной тап — <b style="color:#e8c547;">рывок</b>.<br>
-        <b style="color:#f0d878;">Блок</b> отражает удар: враг замирает на 1,15с. Бьёт вся палка — наконечник сильнее.
-      </div>
-    </div>
-    <div class="hud-skills">
-      <button class="hud-skill" onclick="tryBlock()" id="block-btn">
-        <div class="hud-skill-fill" id="block-fill" style="height:100%;"></div>
-        <svg class="hud-skill-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10 2.2l6 2.4v4.6c0 4-2.8 6.6-6 8-3.2-1.4-6-4-6-8V4.6z"/>
-          <path d="M7 10l2.2 2.2L13.5 8"/>
-        </svg>
-        <span class="hud-skill-label">БЛОК</span>
-      </button>
-      <button class="hud-skill dash" onclick="tryDash()" id="dash-btn">
-        <div class="hud-skill-fill" id="dash-fill" style="height:100%;"></div>
-        <svg class="hud-skill-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 10h12M10 4.5L16 10l-6 5.5"/>
-        </svg>
-        <span class="hud-skill-label">РЫВОК</span>
-      </button>
-    </div>
-  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="hint">Выбери постройку. Камера: ПКМ — вращать, СКМ/Shift+ЛКМ — двигать, колесо — масштаб.</div>
+  <div class="toolBar">
+    <button class="tool active" data-tool="house"><span class="symbol">🏠</span><b>Дом</b><small>🪵 25 · 1×1</small></button>
+    <button class="tool" data-tool="sawmill"><span class="symbol">🪚</span><b>Лесопилка</b><small>🪵 60 · 2×2</small></button>
+    <button class="tool" data-tool="tree"><span class="symbol">🌳</span><b>Дерево</b><small>🪵 6 · 1×1</small></button>
+    <button class="tool" data-tool="road"><span class="symbol">🟫</span><b>Дорога</b><small>🪵 3 · 1×1</small></button>
+    <button class="tool" data-tool="erase"><span class="symbol">⌫</span><b>Снести</b><small>Возврат 50%</small></button>
+    <button class="tool" data-tool="view"><span class="symbol">✋</span><b>Камера</b><small>Перемещать</small></button>
+  </div><div class="foot">ПКМ — вращение · СКМ/Shift+ЛКМ — перемещение · Колесо — масштаб · R — повернуть постройку · Q/E — повернуть камеру</div>
+  <div id="err">Не удалось загрузить Three.js. Проверь интернет: первая загрузка игры требует доступ к библиотеке через CDN.</div>
 </div>
+<div id="help"><div class="modal"><h2>Как играть</h2>
+ <p><b>Древесина</b> не появляется сама. Сначала нужен дом (1–2 жителя), дерево и лесопилка. Житель идёт к дереву, рубит его около 3 секунд, несёт одно бревно на лесопилку и лишь после доставки пополняет запас на <b>8 древесины</b>. В каждом дереве 3 бревна; срубленное дерево возобновляется через 42 секунды.</p>
+ <p><b>Лесопилка занимает 2×2 клетки</b> — для постройки нужен полностью свободный участок. Нажатие «Снести» на любой из четырёх клеток удаляет её целиком. Дома и лесопилка развёрнуты на 180° относительно прошлой версии.</p>
+ <p><b>Камера:</b> правая кнопка мыши — вращение; средняя кнопка или Shift + левая — перемещение; колесо — масштаб. Q/E — поворот, WASD — перемещение, R — повернуть будущую постройку. На телефоне выбери «Камера» для перемещения одним пальцем, или используй два пальца для перемещения и масштаба. Кнопки в правом углу работают на телефоне.</p>
+ <p>Монеты начисляются домами, древесина — <b>только</b> после физической доставки. Поселение автоматически сохраняется, включая остаток древесины и деревья. Ранее сохранённые постройки переносятся по возможности.</p>
+ <button id="closeHelp">Понятно</button></div></div>
 
-<div id="gameover">
-  <div class="gameover-box">
-    <div class="gameover-title">КОСА СОПЕРНИКА ОКАЗАЛАСЬ БЫСТРЕЕ</div>
-    <div class="gameover-heading">ТЕБЯ СРЕЗАЛИ</div>
-    <div class="gameover-stats">
-      <div class="gameover-stat"><div class="gameover-stat-label">ОЧКИ</div><div class="gameover-stat-value" id="go-score">0</div></div>
-      <div class="gameover-stat"><div class="gameover-stat-label">УРОВЕНЬ</div><div class="gameover-stat-value" id="go-level">1</div></div>
-      <div class="gameover-stat"><div class="gameover-stat-label">КОЛОСЬЯ</div><div class="gameover-stat-value" id="go-harvests">0</div></div>
-      <div class="gameover-stat"><div class="gameover-stat-label">УБИЙСТВА</div><div class="gameover-stat-value" id="go-kills">0</div></div>
-      <div class="gameover-stat"><div class="gameover-stat-label">ВРЕМЯ</div><div class="gameover-stat-value" id="go-time">0:00</div></div>
-      <div class="gameover-stat"><div class="gameover-stat-label">РЕКОРД</div><div class="gameover-stat-value" id="go-best">0</div></div>
-    </div>
-    <div class="gameover-coins">
-      <span>🌾</span>
-      <span class="gameover-coins-value" id="go-coins">+0</span>
-      <span class="gameover-coins-label">МОНЕТ</span>
-    </div>
-    <div class="gameover-btns">
-      <button class="menu-btn" id="restart-btn" type="button">Ещё раз</button>
-      <button class="menu-btn" id="return-menu-btn" type="button">В меню</button>
-    </div>
-  </div>
-</div>
 
-<script src="src/audio/audio.js" defer></script>
-<script src="src/systems/balance.js" defer></script>
-<script src="src/systems/cosmetics.js" defer></script>
-<script src="src/input/input.js" defer></script>
-<script src="src/main.js" defer></script>
-</body>
-</html>
+
+<script>setTimeout(function(){if(!window.__gameReady)document.getElementById('err').style.display='block'},13000);</script>
+<script type="module" src="js/main.js"></script></body></html>
